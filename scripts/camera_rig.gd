@@ -7,10 +7,10 @@ class_name CameraRig
 
 @export var min_zoom: float = 6.0
 @export var max_zoom: float = 28.0
-@export var default_zoom: float = 16.0
+@export var default_zoom: float = 18.0
 @export var pan_speed: float = 12.0
 @export var pivot_bounds: Vector2 = Vector2(40.0, 40.0)
-@export var look_angle_deg: float = 55.0
+@export var look_angle_deg: float = 65.0
 
 @onready var camera: Camera3D = $Camera3D
 

@@ -78,7 +78,11 @@ func build_player(parent: Node3D) -> void:
 	hat_top.position.y = 1.48
 	parent.add_child(hat_top)
 
-	# Shovel over shoulder.
+	# Shovel pivot — children rotate together for the digging animation.
+	var shovel := Node3D.new()
+	shovel.name = "ShovelPivot"
+	shovel.position = Vector3(0.0, 0.95, 0.0)
+	parent.add_child(shovel)
 	var shovel_handle := MeshInstance3D.new()
 	var sh := CylinderMesh.new()
 	sh.top_radius = 0.025
@@ -86,18 +90,17 @@ func build_player(parent: Node3D) -> void:
 	sh.height = 0.9
 	shovel_handle.mesh = sh
 	shovel_handle.material_override = make_material(Color(0.55, 0.36, 0.18))
-	shovel_handle.position = Vector3(0.28, 0.95, -0.05)
+	shovel_handle.position = Vector3(0.28, 0.0, -0.05)
 	shovel_handle.rotation_degrees = Vector3(0, 0, -25)
-	parent.add_child(shovel_handle)
-
+	shovel.add_child(shovel_handle)
 	var shovel_blade := MeshInstance3D.new()
 	var bl := BoxMesh.new()
 	bl.size = Vector3(0.18, 0.22, 0.03)
 	shovel_blade.mesh = bl
 	shovel_blade.material_override = make_material(Color(0.7, 0.7, 0.72), 0.6, 0.4)
-	shovel_blade.position = Vector3(0.46, 0.6, -0.05)
+	shovel_blade.position = Vector3(0.46, -0.35, -0.05)
 	shovel_blade.rotation_degrees = Vector3(0, 0, -25)
-	parent.add_child(shovel_blade)
+	shovel.add_child(shovel_blade)
 
 
 ## Build a simple dog model.
@@ -141,6 +144,7 @@ func build_dog(parent: Node3D) -> void:
 			parent.add_child(leg)
 
 	var tail := MeshInstance3D.new()
+	tail.name = "Tail"
 	var tbox := BoxMesh.new()
 	tbox.size = Vector3(0.16, 0.06, 0.06)
 	tail.mesh = tbox
@@ -240,9 +244,27 @@ func build_flower(parent: Node3D, color: Color = COLOR_FLOWER) -> void:
 	parent.add_child(bud)
 
 
-## Build a single crystal.
+## Build a single crystal with a halo glow plate underneath.
 func build_crystal(parent: Node3D) -> void:
+	var halo := MeshInstance3D.new()
+	halo.name = "Halo"
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.7, 0.7)
+	halo.mesh = qm
+	var halo_mat := StandardMaterial3D.new()
+	halo_mat.albedo_color = Color(COLOR_CRYSTAL.r, COLOR_CRYSTAL.g, COLOR_CRYSTAL.b, 0.55)
+	halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	halo_mat.emission_enabled = true
+	halo_mat.emission = COLOR_CRYSTAL
+	halo_mat.emission_energy_multiplier = 1.4
+	halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	halo_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	halo.material_override = halo_mat
+	halo.rotation_degrees = Vector3(-90, 0, 0)
+	halo.position.y = 0.05
+	parent.add_child(halo)
 	var crystal := MeshInstance3D.new()
+	crystal.name = "Crystal"
 	var pm := PrismMesh.new()
 	pm.size = Vector3(0.18, 0.32, 0.18)
 	crystal.mesh = pm

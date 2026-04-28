@@ -5,19 +5,30 @@ class_name CrystalPickup
 signal picked
 
 var _t: float = 0.0
+var _crystal: MeshInstance3D
+var _halo: MeshInstance3D
 
 
 func _ready() -> void:
 	ProcGen.build_crystal(self)
+	_crystal = find_child("Crystal", false, false) as MeshInstance3D
+	_halo = find_child("Halo", false, false) as MeshInstance3D
 
 
 func _process(delta: float) -> void:
 	_t += delta
 	rotation.y = _t * 1.5
-	# Hover animation.
-	for child in get_children():
-		if child is MeshInstance3D:
-			(child as MeshInstance3D).position.y = 0.16 + sin(_t * 3.0) * 0.06
+	var pulse := 0.5 + 0.5 * sin(_t * 3.0)
+	if _crystal:
+		_crystal.position.y = 0.18 + sin(_t * 3.2) * 0.07
+		var mat: StandardMaterial3D = _crystal.material_override
+		if mat:
+			mat.emission_energy_multiplier = 0.6 + pulse * 1.4
+	if _halo:
+		_halo.scale = Vector3.ONE * (0.85 + pulse * 0.45)
+		var hmat: StandardMaterial3D = _halo.material_override
+		if hmat:
+			hmat.albedo_color.a = 0.25 + pulse * 0.45
 
 
 func pickup() -> void:

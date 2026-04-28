@@ -14,6 +14,7 @@ extends Node
 ##   4. The current day is on or before the deadline.
 
 signal order_offered(order: Dictionary)
+signal order_accepted(order: Dictionary)
 signal order_completed(order: Dictionary, profit: int)
 signal order_failed(order: Dictionary, reason: String)
 
@@ -89,6 +90,7 @@ func accept_order(order_id: int, cell) -> bool:
 	order["state"] = "active"
 	pending_orders.erase(order)
 	active_orders.append(order)
+	order_accepted.emit(order)
 	return true
 
 

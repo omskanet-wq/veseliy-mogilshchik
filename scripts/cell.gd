@@ -28,6 +28,7 @@ var _ground: MeshInstance3D
 var _decor_root: Node3D
 var _name_label: Label3D
 var _highlight: MeshInstance3D
+var _order_label: Label3D
 
 
 func _ready() -> void:
@@ -50,13 +51,14 @@ func _build_ground() -> void:
 func _build_highlight() -> void:
 	_highlight = MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(CELL_SIZE * 0.95, CELL_SIZE * 0.95)
+	pm.size = Vector2(CELL_SIZE * 0.96, CELL_SIZE * 0.96)
 	_highlight.mesh = pm
-	var mat := ProcGen.tinted_material(Color(1, 1, 0.4), 0.7)
-	mat.albedo_color.a = 0.35
+	var mat := ProcGen.tinted_material(Color(1, 1, 0.45), 1.5)
+	mat.albedo_color = Color(1, 1, 0.4, 0.40)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_highlight.material_override = mat
-	_highlight.position.y = 0.02
+	_highlight.position.y = 0.04
 	_highlight.visible = false
 	add_child(_highlight)
 
@@ -65,8 +67,9 @@ func set_highlighted(on: bool, color: Color = Color(1, 1, 0.4)) -> void:
 	_highlight.visible = on
 	if on:
 		var mat: StandardMaterial3D = _highlight.material_override
-		mat.albedo_color = Color(color.r, color.g, color.b, 0.4)
+		mat.albedo_color = Color(color.r, color.g, color.b, 0.45)
 		mat.emission = color
+		mat.emission_energy_multiplier = 1.4
 
 
 func set_state(new_state: int) -> void:
@@ -78,9 +81,8 @@ func set_state(new_state: int) -> void:
 func _clear_decor() -> void:
 	for child in _decor_root.get_children():
 		child.queue_free()
-	if _name_label:
-		_name_label.queue_free()
-		_name_label = null
+	_name_label = null
+	_order_label = null
 
 
 func _refresh_visuals() -> void:
@@ -91,17 +93,27 @@ func _refresh_visuals() -> void:
 		State.ASSIGNED:
 			_set_ground_color(ProcGen.COLOR_GRASS_DARK)
 			_build_marker(Color(0.95, 0.85, 0.2))
+			_build_order_label()
 		State.DUG:
 			_set_ground_color(ProcGen.COLOR_DIRT_DARK)
 			_build_pit()
-		State.GRAVE, State.COMPLETED:
+			_build_order_label()
+		State.GRAVE:
 			_set_ground_color(ProcGen.COLOR_DIRT)
 			_build_mound()
 			if tombstone_style >= 0:
 				ProcGen.build_tombstone(_decor_root, tombstone_style, _color_for_style(tombstone_style))
 			if has_flowers:
 				_add_flowers()
-			if state == State.COMPLETED and not engraved_name.is_empty():
+			_build_order_label()
+		State.COMPLETED:
+			_set_ground_color(ProcGen.COLOR_DIRT)
+			_build_mound()
+			if tombstone_style >= 0:
+				ProcGen.build_tombstone(_decor_root, tombstone_style, _color_for_style(tombstone_style))
+			if has_flowers:
+				_add_flowers()
+			if not engraved_name.is_empty():
 				_add_name_label()
 		State.PATH:
 			_set_ground_color(ProcGen.COLOR_PATH)
@@ -177,6 +189,37 @@ func _add_name_label() -> void:
 	_name_label.position = Vector3(0, 0.65, -0.2)
 	_name_label.pixel_size = 0.005
 	_decor_root.add_child(_name_label)
+
+
+func refresh_order_label() -> void:
+	if _order_label:
+		_order_label.queue_free()
+		_order_label = null
+	if state in [State.ASSIGNED, State.DUG, State.GRAVE]:
+		_build_order_label()
+
+
+func _build_order_label() -> void:
+	if order_id <= 0:
+		return
+	var order: Dictionary = OrderManager.get_order_for_cell(self)
+	if order.is_empty():
+		return
+	var days_left: int = order["deadline_day"] - TimeManager.current_day
+	var txt := "%s\nдо дня %d" % [order["deceased_short"], order["deadline_day"]]
+	if days_left <= 0:
+		txt += "  ⚠"
+	_order_label = Label3D.new()
+	_order_label.text = txt
+	_order_label.font_size = 18
+	_order_label.outline_size = 6
+	_order_label.modulate = Color(1, 0.95, 0.65) if days_left > 1 else Color(1, 0.55, 0.45)
+	_order_label.outline_modulate = Color(0, 0, 0, 0.85)
+	_order_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_order_label.no_depth_test = true
+	_order_label.position = Vector3(0, 1.15, 0)
+	_order_label.pixel_size = 0.0045
+	_decor_root.add_child(_order_label)
 
 
 ## Reset cell to EMPTY (used by demolish).

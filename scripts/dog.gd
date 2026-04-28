@@ -19,10 +19,13 @@ var _state: String = "idle" # idle | walking | sniffing
 var _target_cell: Cell = null
 var _target: Vector3 = Vector3.ZERO
 var _sniff_timer: float = 0.0
+var _tail: MeshInstance3D
+var _tail_phase: float = 0.0
 
 
 func _ready() -> void:
 	ProcGen.build_dog(self)
+	_tail = find_child("Tail", false, false) as MeshInstance3D
 
 
 func setup(g: Grid) -> void:
@@ -31,6 +34,11 @@ func setup(g: Grid) -> void:
 
 
 func _process(delta: float) -> void:
+	# Tail wag, faster when sniffing.
+	if _tail:
+		var freq: float = 7.0 if _state == "sniffing" else 3.5
+		_tail_phase += delta * freq
+		_tail.rotation.y = sin(_tail_phase) * 0.55
 	match _state:
 		"walking":
 			var to := _target - global_position
@@ -43,11 +51,10 @@ func _process(delta: float) -> void:
 			if step.length() > to.length():
 				step = to
 			global_position += step
-			# Wagging tail-like rotation feedback.
 			rotation.y = atan2(step.x, step.z)
 		"sniffing":
 			_sniff_timer -= delta
-			# Bobbing animation.
+			# Bobbing animation (head down sniff).
 			position.y = abs(sin(_sniff_timer * 6.0)) * 0.06
 			if _sniff_timer <= 0.0:
 				if randf() < crystal_spawn_chance and _target_cell != null:

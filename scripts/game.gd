@@ -35,10 +35,15 @@ const FLOWER_COST := 40
 @onready var dog: Dog = $Dog
 @onready var environment: WorldEnvironment = $WorldEnvironment
 
+signal tool_changed(tool_id: String)
+signal hint_message(text: String)
+
 var current_tool: String = TOOL_NONE
 var pending_assign_order_id: int = 0
 var pending_name_for_cell: Cell = null
 var crystals_in_world: Array[CrystalPickup] = []
+var _last_hover_screen_pos: Vector2 = Vector2.ZERO
+var _hover_active: bool = false
 
 
 func _ready() -> void:
@@ -51,10 +56,15 @@ func _ready() -> void:
 	dog.crystal_found.connect(_on_dog_crystal_found)
 	# Connect global signals.
 	OrderManager.order_offered.connect(_on_order_offered)
+	OrderManager.order_accepted.connect(_on_order_accepted)
 	OrderManager.order_completed.connect(_on_order_completed)
 	OrderManager.order_failed.connect(_on_order_failed)
-	# Place player at first cell.
-	player.global_position = grid.cell_at(Vector2i(0, 0)).global_position
+	TimeManager.day_changed.connect(_on_day_changed_refresh_labels)
+	# Place player and dog at sensible visible spots.
+	var player_cell: Cell = grid.cell_at(Vector2i(grid_dimensions.x / 2, grid_dimensions.y - 1))
+	if player_cell:
+		player.global_position = player_cell.global_position + Vector3(0, 0, 1.6)
+	dog.position = Vector3(-grid_dimensions.x * Cell.CELL_SIZE * 0.25, 0, grid_dimensions.y * Cell.CELL_SIZE * 0.25)
 
 
 func _build_environment() -> void:
@@ -128,6 +138,28 @@ func _build_environment() -> void:
 
 func set_tool(tool_id: String) -> void:
 	current_tool = tool_id
+	tool_changed.emit(tool_id)
+
+func clear_tool() -> void:
+	set_tool(TOOL_NONE)
+
+
+func update_hover_from_screen(screen_pos: Vector2, active: bool) -> void:
+	_last_hover_screen_pos = screen_pos
+	_hover_active = active
+	if not active or current_tool == TOOL_NONE:
+		grid.clear_hovered()
+		return
+	var ground: Variant = camera_rig.ground_point_from_screen(screen_pos)
+	if ground == null:
+		grid.clear_hovered()
+		return
+	var world: Vector3 = ground
+	var cell := grid.cell_from_world(world)
+	if cell == null:
+		grid.clear_hovered()
+		return
+	grid.set_hovered(cell)
 
 
 func handle_world_click(screen_pos: Vector2) -> void:
@@ -183,13 +215,15 @@ func _try_assign(cell: Cell) -> void:
 	if not OrderManager.accept_order(pending_assign_order_id, cell):
 		log_message.emit("Заказ уже неактуален.")
 		pending_assign_order_id = 0
-		current_tool = TOOL_NONE
+		set_tool(TOOL_NONE)
 		return
 	cell.order_id = pending_assign_order_id
 	cell.set_state(Cell.State.ASSIGNED)
 	pending_assign_order_id = 0
-	current_tool = TOOL_NONE
-	log_message.emit("Место отведено под заказ. Теперь его нужно вырыть.")
+	# Auto-progress: walk over and dig the grave straight away.
+	set_tool(TOOL_DIG)
+	log_message.emit("Место отведено. Мистер Юпитер идёт копать.")
+	_try_dig(cell)
 
 
 func _try_dig(cell: Cell) -> void:
@@ -199,7 +233,8 @@ func _try_dig(cell: Cell) -> void:
 	player.walk_to_cell(cell)
 	await player.arrived
 	cell.set_state(Cell.State.DUG)
-	log_message.emit("Могила выкопана.")
+	log_message.emit("Могила выкопана. Теперь выбери надгробие.")
+	hint_message.emit("Выбери надгробие на панели ниже")
 
 
 func _try_place_tombstone(cell: Cell, style: int) -> void:
@@ -216,6 +251,10 @@ func _try_place_tombstone(cell: Cell, style: int) -> void:
 	cell.tombstone_style = style
 	cell.decoration_cost += cost
 	cell.set_state(Cell.State.GRAVE)
+	# Auto-progress hint towards engraving the name.
+	if cell.engraved_name.is_empty():
+		set_tool(TOOL_NAME)
+		hint_message.emit("Надгробие выбрано. Кликни по могиле и выбей имя на нёй.")
 
 
 func _try_place_flowers(cell: Cell) -> void:
@@ -293,32 +332,50 @@ func _describe_cell(cell: Cell) -> void:
 # ---------- Order signals ----------
 
 func _on_order_offered(order: Dictionary) -> void:
-	log_message.emit("Новый заказ: %s, бюджет %d ₽." % [order["deceased_short"], order["budget"]])
+	log_message.emit("Новый заказ: %s, бюджет %s." % [order["deceased_short"], format_money(order["budget"])])
+
+
+func _on_order_accepted(_order: Dictionary) -> void:
+	pass
 
 
 func _on_order_completed(order: Dictionary, profit: int) -> void:
-	log_message.emit("Заказ %s выполнен. Прибыль: %d ₽." % [order["deceased_short"], profit])
+	log_message.emit("Заказ %s выполнен. Прибыль: %s." % [order["deceased_short"], format_money(profit)])
 
 
 func _on_order_failed(order: Dictionary, reason: String) -> void:
 	log_message.emit("Заказ %s провален: %s" % [order["deceased_short"], reason])
 
 
+func _on_day_changed_refresh_labels(_day: int) -> void:
+	for row in grid.cells:
+		for cell in row:
+			if cell != null:
+				(cell as Cell).refresh_order_label()
+
+
 # ---------- Day cycle ----------
 
 func advance_day() -> void:
 	# Daily upkeep.
+	var upkeep_paid: int = 0
 	if Economy.money >= DAILY_UPKEEP:
 		Economy.spend(DAILY_UPKEEP, "Расходы дня")
+		upkeep_paid = DAILY_UPKEEP
 	else:
+		upkeep_paid = Economy.money
 		Economy.spend(Economy.money, "Расходы дня")
 		log_message.emit("Не хватило денег на содержание!")
 	# Path bonus per tile adjacent to completed graves.
 	var bonus: int = grid.count_paths_adjacent_to_completed() * PATH_BONUS_PER_TILE
 	if bonus > 0:
 		Economy.add_money(bonus, "Доход с дорожек")
-		log_message.emit("Дорожки принесли +%d ₽" % bonus)
 	TimeManager.advance_day()
+	var parts: Array[String] = []
+	parts.append("День %d. Расходы: %s" % [TimeManager.current_day, format_money(upkeep_paid)])
+	if bonus > 0:
+		parts.append("Дорожки: +%s" % format_money(bonus))
+	log_message.emit("   ·   ".join(parts))
 
 
 # ---------- Crystals ----------
@@ -330,6 +387,22 @@ func _on_dog_crystal_found(world_position: Vector3) -> void:
 	crystals_in_world.append(crystal)
 	crystal.tree_exited.connect(func() -> void: crystals_in_world.erase(crystal))
 	log_message.emit("Собака что-то нашла!")
+
+
+static func format_money(value: int) -> String:
+	var abs_val := absi(value)
+	var s := str(abs_val)
+	var out := ""
+	var count := 0
+	for i in range(s.length() - 1, -1, -1):
+		out = s[i] + out
+		count += 1
+		if count == 3 and i > 0:
+			out = "\u202f" + out
+			count = 0
+	if value < 0:
+		out = "-" + out
+	return out + " ₽"
 
 
 # ---------- Order acceptance flow ----------
