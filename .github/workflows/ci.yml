@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate Godot project (parse + import)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: /opt/godot
+          key: godot-4.3-stable-linux
+
+      - name: Install Godot 4.3
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          set -euxo pipefail
+          mkdir -p /opt/godot
+          curl -sSL -o /tmp/godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -o /tmp/godot.zip -d /opt/godot/
+          mv /opt/godot/Godot_v4.3-stable_linux.x86_64 /opt/godot/godot
+          chmod +x /opt/godot/godot
+
+      - name: Import project (build .godot cache)
+        run: /opt/godot/godot --headless --import
+
+      - name: Re-import to verify clean parse
+        run: /opt/godot/godot --headless --import 2>&1 | tee import.log
+      - name: Fail on script errors
+        run: |
+          if grep -E "SCRIPT ERROR|Parse Error|Compile Error|Failed to load script" import.log; then
+            echo "Parse/compile errors found in Godot import output." >&2
+            exit 1
+          fi
+
+  web-export:
+    name: Build Web (PWA) export
+    runs-on: ubuntu-22.04
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        uses: actions/cache@v4
+        with:
+          path: /opt/godot
+          key: godot-4.3-stable-linux
+
+      - name: Ensure Godot present
+        run: |
+          set -euxo pipefail
+          if [ ! -x /opt/godot/godot ]; then
+            mkdir -p /opt/godot
+            curl -sSL -o /tmp/godot.zip \
+              https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+            unzip -o /tmp/godot.zip -d /opt/godot/
+            mv /opt/godot/Godot_v4.3-stable_linux.x86_64 /opt/godot/godot
+            chmod +x /opt/godot/godot
+          fi
+
+      - name: Cache export templates
+        id: cache-templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-4.3-stable-templates
+
+      - name: Install Godot export templates
+        if: steps.cache-templates.outputs.cache-hit != 'true'
+        run: |
+          set -euxo pipefail
+          mkdir -p ~/.local/share/godot/export_templates
+          curl -sSL -o /tmp/templates.tpz \
+            https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          unzip -o /tmp/templates.tpz -d /tmp/templates
+          mv /tmp/templates/templates ~/.local/share/godot/export_templates/4.3.stable
+
+      - name: Import project
+        run: /opt/godot/godot --headless --import
+
+      - name: Build Web export
+        run: |
+          mkdir -p exports/web
+          /opt/godot/godot --headless --export-release "Web" exports/web/index.html 2>&1 | tee export.log
+          ls -la exports/web
+
+      - name: Upload Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pwa
+          path: exports/web/
+          if-no-files-found: error

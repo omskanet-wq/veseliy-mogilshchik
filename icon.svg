@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#3a4a2a"/>
+  <!-- Tombstone -->
+  <path d="M44 36 q0 -16 20 -16 q20 0 20 16 v60 h-40 z" fill="#9aa0a8" stroke="#3a3a3a" stroke-width="2"/>
+  <!-- RIP -->
+  <text x="64" y="60" text-anchor="middle" font-family="serif" font-size="14" font-weight="bold" fill="#3a3a3a">R.I.P</text>
+  <!-- Mound -->
+  <path d="M16 100 q24 -16 48 -16 q24 0 48 16 v12 h-96 z" fill="#5a3a20"/>
+  <!-- Shovel -->
+  <rect x="96" y="36" width="6" height="48" fill="#b58050" transform="rotate(20 99 60)"/>
+  <rect x="92" y="78" width="14" height="18" fill="#888" transform="rotate(20 99 87)"/>
+</svg>

@@ -1,0 +1,10 @@
+# Normalize line endings for all files
+* text=auto eol=lf
+
+# Treat Godot binary files as binary
+*.png binary
+*.jpg binary
+*.ogg binary
+*.wav binary
+*.ttf binary
+*.otf binary
