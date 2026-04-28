@@ -208,7 +208,7 @@ func _build_order_label() -> void:
 	var days_left: int = order["deadline_day"] - TimeManager.current_day
 	var txt := "%s\nдо дня %d" % [order["deceased_short"], order["deadline_day"]]
 	if days_left <= 0:
-		txt += "  ⚠"
+		txt += "  !"
 	_order_label = Label3D.new()
 	_order_label.text = txt
 	_order_label.font_size = 18

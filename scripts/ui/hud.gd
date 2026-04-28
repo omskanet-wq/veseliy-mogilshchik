@@ -112,8 +112,8 @@ func _build_top_bar() -> void:
 	# Margin
 	hbox.add_child(_spacer(10))
 	_day_label = _make_stat_label("День: 1", Color(0.85, 0.95, 1.0))
-	_money_label = _make_stat_label("₽ 500", Color(1.0, 0.95, 0.45))
-	_crystals_label = _make_stat_label("◆ 0", Color(0.7, 0.95, 1.0))
+	_money_label = _make_stat_label("500 р.", Color(1.0, 0.95, 0.45))
+	_crystals_label = _make_stat_label("Крист.: 0", Color(0.7, 0.95, 1.0))
 	hbox.add_child(_day_label)
 	hbox.add_child(_money_label)
 	hbox.add_child(_crystals_label)
@@ -127,7 +127,7 @@ func _build_top_bar() -> void:
 	_orders_button.toggled.connect(_on_orders_toggled)
 	hbox.add_child(_orders_button)
 	var next_btn := Button.new()
-	next_btn.text = "▶ Следующий день"
+	next_btn.text = "Следующий день »"
 	next_btn.custom_minimum_size = Vector2(150, 40)
 	next_btn.add_theme_font_size_override("font_size", 16)
 	next_btn.pressed.connect(func() -> void: game.advance_day())
@@ -278,14 +278,14 @@ func _build_tool_panel() -> void:
 	flow.add_theme_constant_override("h_separation", 6)
 	flow.add_theme_constant_override("v_separation", 6)
 	panel.add_child(flow)
-	_make_tool_button(flow, Game.TOOL_DIG, "⛏ Копать", "Вырыть отведённую могилу")
-	_make_tool_button(flow, Game.TOOL_TOMBSTONE_0, "▯ Камень\n%s" % Game.format_money(Game.TOMBSTONE_COSTS[0]), "Простой надгробный камень")
-	_make_tool_button(flow, Game.TOOL_TOMBSTONE_1, "✝ Крест\n%s" % Game.format_money(Game.TOMBSTONE_COSTS[1]), "Деревянный крест")
-	_make_tool_button(flow, Game.TOOL_TOMBSTONE_2, "▲ Обелиск\n%s" % Game.format_money(Game.TOMBSTONE_COSTS[2]), "Богатый обелиск")
-	_make_tool_button(flow, Game.TOOL_FLOWERS, "❀ Цветы\n%s" % Game.format_money(Game.FLOWER_COST), "Украсить цветами")
-	_make_tool_button(flow, Game.TOOL_NAME, "✎ Имя", "Выбить имя на надгробии")
-	_make_tool_button(flow, Game.TOOL_PATH, "▦ Дорожка\n%s" % Game.format_money(Game.PATH_COST), "Положить дорожку")
-	_make_tool_button(flow, Game.TOOL_DEMOLISH, "✖ Снести", "Очистить клетку")
+	_make_tool_button(flow, Game.TOOL_DIG, "Копать", "Вырыть отведённую могилу")
+	_make_tool_button(flow, Game.TOOL_TOMBSTONE_0, "Камень\n%s" % Game.format_money(Game.TOMBSTONE_COSTS[0]), "Простой надгробный камень")
+	_make_tool_button(flow, Game.TOOL_TOMBSTONE_1, "Крест\n%s" % Game.format_money(Game.TOMBSTONE_COSTS[1]), "Деревянный крест")
+	_make_tool_button(flow, Game.TOOL_TOMBSTONE_2, "Обелиск\n%s" % Game.format_money(Game.TOMBSTONE_COSTS[2]), "Богатый обелиск")
+	_make_tool_button(flow, Game.TOOL_FLOWERS, "Цветы\n%s" % Game.format_money(Game.FLOWER_COST), "Украсить цветами")
+	_make_tool_button(flow, Game.TOOL_NAME, "Имя", "Выбить имя на надгробии")
+	_make_tool_button(flow, Game.TOOL_PATH, "Дорожка\n%s" % Game.format_money(Game.PATH_COST), "Положить дорожку")
+	_make_tool_button(flow, Game.TOOL_DEMOLISH, "Снести", "Очистить клетку")
 
 
 func _make_tool_button(parent: Control, tool_id: String, label: String, tooltip: String) -> void:
@@ -493,7 +493,7 @@ func _on_money_changed(value: int) -> void:
 
 
 func _on_crystals_changed(value: int) -> void:
-	_crystals_label.text = "◆ %d" % value
+	_crystals_label.text = "Крист.: %d" % value
 
 
 func _on_day_changed(value: int) -> void:

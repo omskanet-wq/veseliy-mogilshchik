@@ -60,11 +60,13 @@ func _ready() -> void:
 	OrderManager.order_completed.connect(_on_order_completed)
 	OrderManager.order_failed.connect(_on_order_failed)
 	TimeManager.day_changed.connect(_on_day_changed_refresh_labels)
-	# Place player and dog at sensible visible spots.
-	var player_cell: Cell = grid.cell_at(Vector2i(grid_dimensions.x / 2, grid_dimensions.y - 1))
+	# Place player and dog at sensible visible spots inside the cemetery.
+	var player_cell: Cell = grid.cell_at(Vector2i(grid_dimensions.x / 2, grid_dimensions.y / 2))
 	if player_cell:
-		player.global_position = player_cell.global_position + Vector3(0, 0, 1.6)
-	dog.position = Vector3(-grid_dimensions.x * Cell.CELL_SIZE * 0.25, 0, grid_dimensions.y * Cell.CELL_SIZE * 0.25)
+		player.global_position = player_cell.global_position
+	var dog_cell: Cell = grid.cell_at(Vector2i(2, 2))
+	if dog_cell:
+		dog.global_position = dog_cell.global_position
 
 
 func _build_environment() -> void:
@@ -290,7 +292,7 @@ func confirm_name(cell: Cell, name_text: String) -> void:
 	if order_id > 0:
 		var result: Dictionary = OrderManager.try_complete_order(order_id, cell.decoration_cost)
 		if result["success"]:
-			log_message.emit("Заказ выполнен! +%d ₽ прибыли" % int(result["profit"]))
+			log_message.emit("Заказ выполнен! +%s прибыли" % format_money(int(result["profit"])))
 		else:
 			log_message.emit("Заказ провален: %s" % result["reason"])
 	else:
@@ -323,7 +325,7 @@ func _describe_cell(cell: Cell) -> void:
 		Cell.State.EMPTY: s = "Пустая клетка"
 		Cell.State.ASSIGNED: s = "Отведено под заказ"
 		Cell.State.DUG: s = "Выкопанная могила"
-		Cell.State.GRAVE: s = "Декорированная могила (₽%d)" % cell.decoration_cost
+		Cell.State.GRAVE: s = "Декорированная могила (%s)" % format_money(cell.decoration_cost)
 		Cell.State.COMPLETED: s = "Завершённая могила: %s" % cell.engraved_name
 		Cell.State.PATH: s = "Дорожка"
 	log_message.emit(s)
@@ -398,11 +400,11 @@ static func format_money(value: int) -> String:
 		out = s[i] + out
 		count += 1
 		if count == 3 and i > 0:
-			out = "\u202f" + out
+			out = " " + out
 			count = 0
 	if value < 0:
 		out = "-" + out
-	return out + " ₽"
+	return out + " р."
 
 
 # ---------- Order acceptance flow ----------
